@@ -6,9 +6,9 @@ def generate_launch_description():
     return LaunchDescription([
         Node(
             package='mechanical_press',
-            executable='press_node',
-            name='press_node',
+            executable='mechanical_press',
+            name='mechanical_press',
             namespace=LaunchConfiguration('namespace'),
-            parameters=['default_params.yaml'],
+            # parameters=['default_params.yaml'],
         )
     ])

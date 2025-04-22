@@ -153,7 +153,7 @@ class PressNode(Node):
                     continue
                 section, key = param.split('.', 1)
                 param_dict.setdefault(section, {})[key] = self.get_parameter(param).value
-            with open('/tmp/mechanical_press_params.yaml', 'w') as f:
+            with open('/tmp/industrial_press_params.yaml', 'w') as f:
                 yaml.dump({'ros__parameters': param_dict}, f)
         except Exception as e:
             self.get_logger().error(f"Failed to save parameters: {e}")
