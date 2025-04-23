@@ -1,4 +1,4 @@
-# Industrial Press Node (ROS 2)
+# Mechanical Press Node (ROS 2)
 
 This ROS 2 Python node simulates and controls an industrial press using a CANopen-controlled motor. It is designed to work with both a physical motor and a GUI interface, supporting manual jog controls (up/down), parameterized motion phases (approach, press, return), position tracking, and persistent configuration.
 
@@ -24,9 +24,9 @@ This ROS 2 Python node simulates and controls an industrial press using a CANope
 
 ```bash
 cd ~/ros2_ws/src
-git clone https://github.com/your-org/industrial_press.git
+git clone git@github.com:emoco-hub/mechanical_press.git
 cd ~/ros2_ws
-colcon build --packages-select industrial_press
+colcon build
 . install/setup.bash
 ```
 
@@ -35,10 +35,10 @@ colcon build --packages-select industrial_press
 ## Launch
 
 ```bash
-ros2 launch industrial_press press_node_launch.py namespace:=my_press
+ros2 launch mechanical_press press_node_launch.py namespace:=P1
 ```
 
-This will load parameters from `default_params.yaml` and start the node under `/my_press/`.
+This will load parameters from `default_params.yaml` and start the node under `/P1/`.
 
 ---
 
@@ -90,8 +90,8 @@ end:
 To view parameters:
 
 ```bash
-ros2 param list /my_press
-ros2 param get /my_press manual.velocity
+ros2 param list /P1
+ros2 param get /P1 manual.velocity
 ```
 
 ---
