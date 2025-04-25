@@ -25,8 +25,11 @@ This ROS 2 Python node simulates and controls an industrial press using a CANope
 ```bash
 cd ~/ros2_ws/src
 git clone git@github.com:emoco-hub/mechanical_press.git
+```
+
+```bash
 cd ~/ros2_ws
-colcon build
+colcon build --packages-select mechanical_press
 . install/setup.bash
 ```
 
@@ -65,14 +68,14 @@ This will load parameters from `default_params.yaml` and start the node under `/
 
 ---
 
-## 🛠 Parameters
+## ð  Parameters
 
 Parameters are grouped by motion phase:
 
 ```yaml
 manual:
-  force: 5.0       # 0.1 – 10.0 N
-  velocity: 300.0  # 60 – 600 mm/min
+  force: 5.0       # 0.1 â 10.0 N
+  velocity: 300.0  # 60 â 600 mm/min
 approach:
   ...
 press:
