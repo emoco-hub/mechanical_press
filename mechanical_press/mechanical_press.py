@@ -1,33 +1,29 @@
 import rclpy
 from rclpy.node import Node
-from rcl_interfaces.msg import ParameterDescriptor, FloatingPointRange
+from rcl_interfaces.msg import ParameterDescriptor, FloatingPointRange, SetParametersResult
 from std_msgs.msg import Bool, Float64
 from std_srvs.srv import Trigger
 from rclpy.parameter import Parameter
 import time
+import yaml
+import os
 
-class PressNode(Node):
+class MechanicalPressNode(Node):
 
     def __init__(self):
         super().__init__('mechanical_press')
 
-        # Declare all parameters with type and ranges
-        self.declare_typed_param('manual.force', 5.0, 0.1, 10.0, 0.1)
-        self.declare_typed_param('manual.velocity', 300.0, 60.0, 600.0, 1.0)
+        self.declare_parameter('param_file_path', '')
+        self.param_file_path = self.get_parameter('param_file_path').get_parameter_value().string_value
+        if not self.param_file_path:
+            self.param_file_path = '/tmp/mechanical_press_params.yaml'
 
-        self.declare_typed_param('approach.force', 3.0, 0.1, 10.0, 0.1)
-        self.declare_typed_param('approach.velocity', 200.0, 60.0, 600.0, 1.0)
+        self.declare_all_parameters()
 
-        self.declare_typed_param('press.force', 10.0, 0.1, 10.0, 0.1)
-        self.declare_typed_param('press.velocity', 100.0, 60.0, 600.0, 1.0)
+        self.pending_param_save = False
+        self.param_save_timer = self.create_timer(0.1, self.delayed_save_params)
 
-        self.declare_typed_param('return.force', 4.0, 0.1, 10.0, 0.1)
-        self.declare_typed_param('return.velocity', 400.0, 60.0, 600.0, 1.0)
-
-        # Position parameters don't need validation ranges
-        self.declare_parameter('home.position', 0.0)
-        self.declare_parameter('start.position', 0.0)
-        self.declare_parameter('end.position', 0.0)
+        self.add_on_set_parameters_callback(self.param_change_callback)
 
         # NOTE: Mock position
         self.current_position = 0.0
@@ -59,6 +55,21 @@ class PressNode(Node):
 
         self.get_logger().info("Press node ready.")
 
+    def declare_all_parameters(self):
+        """Declare parameters with type and fallback defaults."""
+        self.declare_typed_param('manual.force', 5.0, 0.1, 10.0, 0.1)
+        self.declare_typed_param('manual.velocity', 300.0, 60.0, 600.0, 1.0)
+        self.declare_typed_param('approach.force', 3.0, 0.1, 10.0, 0.1)
+        self.declare_typed_param('approach.velocity', 200.0, 60.0, 600.0, 1.0)
+        self.declare_typed_param('press.force', 10.0, 0.1, 10.0, 0.1)
+        self.declare_typed_param('press.velocity', 100.0, 60.0, 600.0, 1.0)
+        self.declare_typed_param('return.force', 4.0, 0.1, 10.0, 0.1)
+        self.declare_typed_param('return.velocity', 400.0, 60.0, 600.0, 1.0)
+
+        self.declare_parameter('home.position', 0.0)
+        self.declare_parameter('start.position', 0.0)
+        self.declare_parameter('end.position', 0.0)
+
     def declare_typed_param(self, name, default, min_val, max_val, step):
         descriptor = ParameterDescriptor(
             floating_point_range=[FloatingPointRange(
@@ -66,9 +77,18 @@ class PressNode(Node):
                 to_value=float(max_val),
                 step=float(step)
             )],
-        description=f"{name} (range: {min_val}-{max_val}, step: {step})"
+            description=f"{name} (range {min_val}-{max_val}, step {step})"
         )
         self.declare_parameter(name, default, descriptor)
+
+    def param_change_callback(self, params):
+        self.pending_param_save = True
+        return SetParametersResult(successful=True)
+
+    def delayed_save_params(self):
+        if self.pending_param_save:
+            self.save_params_to_file()
+            self.pending_param_save = False
 
     # NOTE: Mock
     def update_position_sim(self):
@@ -144,23 +164,33 @@ class PressNode(Node):
                 # TODO: Call CANopen node to stop motion
 
     def save_params_to_file(self):
-        try:
-            from rclpy.parameter import Parameter
+        if not self.param_file_path:
+            self.param_file_path = '/tmp/mechanical_press_params.yaml'
+
+        # Build full node name including namespace
+        full_node_name = self.get_fully_qualified_name()  # Example: /P1/mechanical_press
+        param_dict = {
+            full_node_name: {
+                'ros__parameters': {}
+            }
+        }
+
+        for name, param in self._parameters.items():
+            parts = name.split('.')
+            d = param_dict[full_node_name]['ros__parameters']
+            for part in parts[:-1]:
+                d = d.setdefault(part, {})
+            d[parts[-1]] = param.value
+
+        with open(self.param_file_path, 'w') as f:
             import yaml
-            param_dict = {}
-            for param in self._parameters:
-                if "." not in param:
-                    continue
-                section, key = param.split('.', 1)
-                param_dict.setdefault(section, {})[key] = self.get_parameter(param).value
-            with open('/tmp/industrial_press_params.yaml', 'w') as f:
-                yaml.dump({'ros__parameters': param_dict}, f)
-        except Exception as e:
-            self.get_logger().error(f"Failed to save parameters: {e}")
+            yaml.dump(param_dict, f, sort_keys=False)
+
+        self.get_logger().info(f"Saved parameters to {self.param_file_path}")
 
 def main(args=None):
     rclpy.init(args=args)
-    node = PressNode()
+    node = MechanicalPressNode()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:

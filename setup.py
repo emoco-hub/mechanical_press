@@ -21,14 +21,6 @@ setup(
     data_files=[
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
         ("share/" + package_name, ["package.xml"]),
-        ("share/" + package_name + "/launch", ["launch/press_node_launch.py"]),
+        ("share/" + package_name + "/launch", ["launch/mechanical_press_launch.py"]),
     ],
 )
-
-# [options.package_data]
-# * = *.yaml
-
-# [options.data_files]
-# share/ament_index/resource_index/packages = resource/mechanical_press
-# share/mechanical_press = package.xml
-# share/mechanical_press/launch = launch/*.py

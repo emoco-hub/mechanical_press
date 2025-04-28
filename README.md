@@ -35,13 +35,33 @@ colcon build --packages-select mechanical_press
 
 ---
 
-## Launch
+## Setting up Configuration
+
+1. Create the runtime directory under /var/lib
 
 ```bash
-ros2 launch mechanical_press press_node_launch.py namespace:=P1
+sudo mkdir -p /var/lib/mechanical_press
 ```
 
-This will load parameters from `default_params.yaml` and start the node under `/P1/`.
+2. Copy the example config into /var/lib
+
+```bash
+sudo cp mechanical_press_example.yaml /var/lib/mechanical_press/current_params.yaml
+```
+
+3. Set ownership to the emoco user
+
+```bash
+sudo chown emoco:emoco /var/lib/mechanical_press/current_params.yaml
+```
+
+6. Launch the node using the config:
+
+```bash
+ros2 launch mechanical_press mechanical_press_launch.py namespace:=P1 param_file:=/var/lib/mechanical_press/current_params.yaml
+```
+
+This will start the node under the name `/P1/`. The node will load initial parameters from this file and automatically save back any changes.
 
 ---
 
@@ -68,14 +88,14 @@ This will load parameters from `default_params.yaml` and start the node under `/
 
 ---
 
-## ð  Parameters
+## ÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂ  Parameters
 
 Parameters are grouped by motion phase:
 
 ```yaml
 manual:
-  force: 5.0       # 0.1 â 10.0 N
-  velocity: 300.0  # 60 â 600 mm/min
+  force: 5.0       # 0.1 ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ 10.0 N
+  velocity: 300.0  # 60 ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ 600 mm/min
 approach:
   ...
 press:
