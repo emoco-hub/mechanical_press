@@ -60,7 +60,7 @@ sudo chown emoco:emoco /var/lib/mechanical_press/current_params.yaml
 6. Launch the node using the config:
 
 ```bash
-ros2 launch mechanical_press mechanical_press_launch.py namespace:=P1 param_file:=/var/lib/mechanical_press/current_params.yaml
+ros2 launch mechanical_press mechanical_press.launch.py namespace:=P1 param_file:=/var/lib/mechanical_press/current_params.yaml
 ```
 
 This will start the node under the name `/P1/`. The node will load initial parameters from this file and automatically save back any changes.
