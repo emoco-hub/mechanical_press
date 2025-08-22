@@ -1,6 +1,8 @@
 # Mechanical Press Node (ROS 2)
 
-This ROS 2 Python node simulates and controls an industrial press using a CANopen-controlled motor. It is designed to work with both a physical motor and a GUI interface, supporting manual jog controls (up/down), parameterized motion phases (approach, press, return), position tracking, and persistent configuration.
+This ROS 2 Python node simulates the control of an industrial press using a CANopen-controlled motor. It is designed to work with both a physical motor and a GUI interface, supporting manual jog controls (up/down), parameterized motion phases (approach, press, return), position tracking, and persistent configuration.
+
+NOTE: This node is intended for demo purposees only. Not production use.
 
 ---
 
@@ -88,14 +90,14 @@ This will start the node under the name `/P1/`. The node will load initial param
 
 ---
 
-## ÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂ  Parameters
+## Parameters
 
 Parameters are grouped by motion phase:
 
 ```yaml
 manual:
-  force: 5.0       # 0.1 ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ 10.0 N
-  velocity: 300.0  # 60 ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ 600 mm/min
+  force: 5.0       # 0.1 10.0 N
+  velocity: 300.0  # 60 600 mm/min
 approach:
   ...
 press:
