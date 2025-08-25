@@ -115,8 +115,8 @@ end:
 To view parameters:
 
 ```bash
-ros2 param list /P1
-ros2 param get /P1 manual.velocity
+ros2 param list /press1
+ros2 param get /press1 manual.velocity
 ```
 
 ---
