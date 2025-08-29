@@ -1,0 +1,10 @@
+repositories:
+  mechanical_press_core:
+    type: git
+    url: .
+    version: main
+    
+  mechanical_press_bringup:
+    type: git  
+    url: .
+    version: main
