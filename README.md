@@ -1,8 +1,16 @@
-# Mechanical Press Node (ROS 2)
+# Mechanical Press System (ROS 2)
 
-This ROS 2 Python node simulates the control of an industrial press using a CANopen-controlled motor. It is designed to work with both a physical motor and a GUI interface, supporting manual jog controls (up/down), parameterized motion phases (approach, press, return), position tracking, and persistent configuration.
+This ROS 2 system simulates the control of an industrial press using a CANopen-controlled motor. It is designed to work with both a physical motor and a GUI interface, supporting manual jog controls (up/down), parameterized motion phases (approach, press, return), position tracking, and persistent configuration.
 
-NOTE: This node is intended for demo purposees only. Not production use.
+NOTE: This system is intended for demo purposes only. Not production use.
+
+## Package Structure
+
+This system is split into multiple packages following ROS 2 best practices:
+
+- **`mechanical_press_core`** - Core node implementation with business logic
+- **`mechanical_press_bringup`** - Launch files, configuration files, and deployment scripts  
+- **`mechanical_press`** - Meta-package that depends on both core and bringup packages
 
 ---
 
@@ -37,6 +45,22 @@ colcon build --packages-select mechanical_press
 
 ---
 
+## Quick Start
+
+Launch with default configuration:
+
+```bash
+ros2 launch mechanical_press_bringup mechanical_press.launch.py
+```
+
+Launch with custom namespace and config:
+
+```bash
+ros2 launch mechanical_press_bringup mechanical_press.launch.py namespace:=my_press param_file:=/path/to/config.yaml
+```
+
+---
+
 ## Setting up Configuration
 
 1. Create the runtime directory under /var/lib
@@ -48,7 +72,7 @@ sudo mkdir -p /var/lib/mechanical_press
 2. Copy the example config into /var/lib
 
 ```bash
-sudo cp mechanical_press_example.yaml /var/lib/mechanical_press/current_params.yaml
+sudo cp mechanical_press_bringup/config/example_params.yaml /var/lib/mechanical_press/current_params.yaml
 ```
 
 3. Set ownership to the emoco user
@@ -57,10 +81,10 @@ sudo cp mechanical_press_example.yaml /var/lib/mechanical_press/current_params.y
 sudo chown emoco:emoco /var/lib/mechanical_press/current_params.yaml
 ```
 
-6. Launch the node using the config:
+4. Launch the node using the config:
 
 ```bash
-ros2 launch mechanical_press mechanical_press.launch.py namespace:=press1 param_file:=/var/lib/mechanical_press/current_params.yaml
+ros2 launch mechanical_press_bringup mechanical_press.launch.py namespace:=press1 param_file:=/var/lib/mechanical_press/current_params.yaml
 ```
 
 This will start the node under the name `/press1/`. The node will load initial parameters from this file and automatically save back any changes.
@@ -129,7 +153,7 @@ Call this service to persist all current parameters to a YAML file:
 ros2 service call /my_press/save_params std_srvs/srv/Trigger
 ```
 
-By default, the YAML file is written to `/tmp/industrial_press_params.yaml`.
+By default, the YAML file is written to `/tmp/mechanical_press_params.yaml`.
 
 ---
 
