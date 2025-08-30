@@ -37,17 +37,19 @@ cd ~/ros2_ws/src
 git clone git@github.com:emoco-hub/mechanical_press.git
 ```
 
-Since this repository contains multiple ROS packages in subdirectories, create symlinks so colcon can find them:
-
-```bash
-cd ~/ros2_ws/src
-ln -s mechanical_press/mechanical_press_core .
-ln -s mechanical_press/mechanical_press_bringup .
-```
+Build the packages directly from the subdirectories:
 
 ```bash
 cd ~/ros2_ws
-colcon build --packages-select mechanical_press_core mechanical_press_bringup mechanical_press
+colcon build --base-paths src/mechanical_press/mechanical_press_core src/mechanical_press/mechanical_press_bringup src/mechanical_press/mechanical_press
+. install/setup.bash
+```
+
+Alternatively, you can build all packages in the repository:
+
+```bash
+cd ~/ros2_ws  
+colcon build --base-paths src/mechanical_press
 . install/setup.bash
 ```
 
