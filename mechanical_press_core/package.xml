@@ -11,6 +11,9 @@
   <depend>rclpy</depend>
   <depend>std_msgs</depend>
   <exec_depend>std_srvs</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>mechanical_press_core</exec_depend>
 
   <export>
     <build_type>ament_python</build_type>
