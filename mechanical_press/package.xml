@@ -2,7 +2,7 @@
 <package format="3">
   <name>mechanical_press</name>
   <version>0.1.0</version>
-  <description>Meta-package for mechanical press system - includes core and bringup packages</description>
+  <description>Convenience package for mechanical press system - depends on core and bringup packages</description>
   <maintainer email="your_email@example.com">Your Name</maintainer>
   <license>Apache-2.0</license>
 
@@ -13,6 +13,5 @@
 
   <export>
     <build_type>ament_cmake</build_type>
-    <metapackage />
   </export>
 </package>
