@@ -1,0 +1,35 @@
+# Configuration for maintenance/testing press
+# Safe settings for maintenance work and testing
+
+/maintenance/test_station/mechanical_press:
+  ros__parameters:
+    # Instance identity
+    instance_name: "maintenance_press"
+    friendly_name: "Maintenance Test Station"
+    
+    # Safe maintenance settings
+    manual:
+      force: 2.0      # Very low force for safety
+      velocity: 100.0 # Slow for safety
+    approach:
+      force: 1.5
+      velocity: 80.0  # Slow approach
+    press:
+      force: 5.0      # Limited press force
+      velocity: 50.0  # Very slow press
+    return:
+      force: 2.0
+      velocity: 150.0 # Moderate return speed
+    
+    # Maintenance positions
+    home:
+      position: 0.0
+    start:
+      position: 10.0   # Short stroke for testing
+    end:
+      position: 50.0   # Limited depth
+    
+    # Maintenance system settings
+    control_loop_rate: 10.0  # Lower rate is fine
+    safety_timeout: 10.0     # Longer timeout for manual work
+    log_level: "DEBUG"       # Full logging for diagnostics

@@ -1,0 +1,36 @@
+# Default configuration for mechanical press
+# This is the base configuration with no namespace specified
+# Instances will override the namespace and customize parameters
+
+/**:
+  ros__parameters:
+    # Instance identity (will be overridden)
+    instance_name: "default"
+    friendly_name: "Mechanical Press"
+    
+    # Motion parameters
+    manual:
+      force: 5.0      # Newtons
+      velocity: 300.0 # mm/min
+    approach:
+      force: 3.0
+      velocity: 200.0
+    press:
+      force: 10.0
+      velocity: 100.0
+    return:
+      force: 4.0
+      velocity: 400.0
+    
+    # Position markers
+    home:
+      position: 0.0
+    start:
+      position: 0.0
+    end:
+      position: 0.0
+    
+    # System configuration
+    control_loop_rate: 20.0  # Hz
+    safety_timeout: 5.0      # seconds
+    log_level: "INFO"
