@@ -91,11 +91,11 @@ fi
 # Auto-detect or prompt for workspace if not provided
 if [ -z "$WORKSPACE_PATH" ]; then
   # Try common workspace locations
-  if [ -d "~/ros2_ws/src/mechanical_press" ]; then
-    WORKSPACE_PATH="~/ros2_ws"
+  if [ -d "$HOME/ros2_ws/src/mechanical_press" ]; then
+    WORKSPACE_PATH="$HOME/ros2_ws"
     echo "Auto-detected workspace: $WORKSPACE_PATH"
-  elif [ -d "../.." ] && [ -f "../../package.xml" ]; then
-    # We're likely in the package directory
+  elif [ -f "../../package.xml" ] && [ -d "../../src" ]; then
+    # We're in a package directory, workspace is two levels up
     WORKSPACE_PATH="$(cd ../.. && pwd)"
     echo "Auto-detected workspace: $WORKSPACE_PATH"
   else
