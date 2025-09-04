@@ -144,8 +144,8 @@ Environment=ROS_LOG_DIR=$LOG_DIR
 # Working directory
 WorkingDirectory=$INSTANCE_DIR
 
-# Launch command
-ExecStart=/usr/bin/ros2 launch \${APP_PACKAGE} \${APP_LAUNCH_FILE} namespace:=\${NAMESPACE} param_file:=\${CONFIG_FILE} instance_name:=\${INSTANCE_NAME}
+# Launch command - use bash to source ROS environment
+ExecStart=/bin/bash -c 'source /opt/ros/\${ROS_DISTRO}/setup.bash && ros2 launch \${APP_PACKAGE} \${APP_LAUNCH_FILE} namespace:=\${NAMESPACE} param_file:=\${CONFIG_FILE} instance_name:=\${INSTANCE_NAME}'
 
 # Security hardening
 NoNewPrivileges=yes
