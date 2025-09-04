@@ -13,6 +13,7 @@ NAMESPACE=""
 CONFIG_FILE=""
 SERVICE_NAME=""
 ROS_DISTRO="jazzy"  # Default to current LTS
+WORKSPACE_PATH=""  # Will be detected or prompted for
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -37,22 +38,33 @@ while [[ $# -gt 0 ]]; do
       ROS_DISTRO="$2"
       shift 2
       ;;
+    --workspace)
+      WORKSPACE_PATH="$2"
+      shift 2
+      ;;
     --help)
       echo "Usage: $0 --name INSTANCE_NAME --namespace NAMESPACE --config CONFIG_FILE [OPTIONS]"
       echo ""
       echo "Options:"
       echo "  --service-name SERVICE_NAME    Custom service name (default: mechanical-press-INSTANCE_NAME)"
-      echo "  --ros-distro ROS_DISTRO        ROS distribution (default: humble)"
+      echo "  --ros-distro ROS_DISTRO        ROS distribution (default: jazzy)"
+      echo "  --workspace WORKSPACE_PATH     ROS workspace path (auto-detected or prompted if not provided)"
       echo ""
       echo "Examples:"
-      echo "  # Development instance"
+      echo "  # Development instance (auto-detect workspace)"
       echo "  $0 --name dev-press --namespace /dev --config config/examples/development.yaml"
       echo ""
-      echo "  # Production instance with custom ROS distro"
-      echo "  $0 --name factory-line1-press1 --namespace /factory/line1/press1 --config config/examples/factory_line1_press1.yaml --ros-distro jazzy"
+      echo "  # Production instance with specific settings"
+      echo "  $0 --name factory-line1-press1 --namespace /factory/line1/press1 --config config/examples/factory_line1_press1.yaml --ros-distro humble"
+      echo ""
+      echo "  # Specify custom workspace location"
+      echo "  $0 --name dev-press --namespace /dev --config config/examples/development.yaml --workspace /path/to/workspace"
       echo ""
       echo "Available example configs:"
       find "$PROJECT_ROOT/config/examples" -name "*.yaml" 2>/dev/null | sed 's|.*/|  - config/examples/|' || true
+      echo ""
+      echo "Note: This script will build mechanical_press from source and install a clean copy"
+      echo "to the service location. Your workspace doesn't need to be pre-built."
       exit 0
       ;;
     *)
@@ -75,6 +87,29 @@ fi
 if [ -z "$SERVICE_NAME" ]; then
   SERVICE_NAME="mechanical-press-$INSTANCE_NAME"
 fi
+
+# Auto-detect or prompt for workspace if not provided
+if [ -z "$WORKSPACE_PATH" ]; then
+  # Try common workspace locations
+  if [ -d "~/ros2_ws/src/mechanical_press" ]; then
+    WORKSPACE_PATH="~/ros2_ws"
+    echo "Auto-detected workspace: $WORKSPACE_PATH"
+  elif [ -d "../.." ] && [ -f "../../package.xml" ]; then
+    # We're likely in the package directory
+    WORKSPACE_PATH="$(cd ../.. && pwd)"
+    echo "Auto-detected workspace: $WORKSPACE_PATH"
+  else
+    echo "Could not auto-detect workspace containing mechanical_press package."
+    echo "Common locations checked:"
+    echo "  - ~/ros2_ws/src/mechanical_press"
+    echo "  - Current directory structure"
+    echo ""
+    read -p "Please enter your ROS workspace path: " WORKSPACE_PATH
+  fi
+fi
+
+# Expand tilde in workspace path
+WORKSPACE_PATH="${WORKSPACE_PATH/#\~/$HOME}"
 
 # Resolve config file path
 if [ ! -f "$CONFIG_FILE" ]; then
@@ -119,6 +154,45 @@ sudo useradd -r -s /bin/false emoco 2>/dev/null || true
 echo "Installing configuration..."
 sudo cp "$CONFIG_FILE" "$CONFIG_DIR/params.yaml"
 
+# Build and install only mechanical_press to service location  
+echo "Building and installing mechanical_press..."
+echo "Workspace: $WORKSPACE_PATH"
+
+# Check if source exists
+if [ ! -d "$WORKSPACE_PATH/src/mechanical_press" ]; then
+    echo "Error: mechanical_press source not found at $WORKSPACE_PATH/src/mechanical_press"
+    echo ""
+    echo "Make sure:"
+    echo "  1. You're in the correct workspace directory"
+    echo "  2. The mechanical_press package is in the src/ directory"
+    echo "  3. The workspace path is correct: $WORKSPACE_PATH"
+    exit 1
+fi
+
+if [ -d "$WORKSPACE_PATH" ]; then
+    # Create temporary clean build for just mechanical_press
+    TEMP_INSTALL="/tmp/mechanical_press_install_$(date +%s)"
+    
+    echo "Building mechanical_press in clean environment..."
+    cd "$WORKSPACE_PATH"
+    colcon build --packages-select mechanical_press \
+        --install-base "$TEMP_INSTALL" \
+        --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+    
+    # Copy only the clean build to service location
+    sudo mkdir -p "$INSTANCE_DIR/install"
+    sudo cp -r "$TEMP_INSTALL"/* "$INSTANCE_DIR/install/"
+    sudo chown -R emoco:emoco "$INSTANCE_DIR/install"
+    
+    # Cleanup
+    rm -rf "$TEMP_INSTALL"
+    
+    echo "✓ Installed clean mechanical_press build to service"
+else
+    echo "Error: Workspace directory not found at $WORKSPACE_PATH"
+    exit 1
+fi
+
 # Create instance environment file
 sudo tee "$CONFIG_DIR/instance.env" > /dev/null << EOF
 INSTANCE_NAME=$INSTANCE_NAME
@@ -153,8 +227,8 @@ Environment=ROS_LOG_DIR=$LOG_DIR
 # Working directory
 WorkingDirectory=$INSTANCE_DIR
 
-# Launch command - use bash to source ROS environment
-ExecStart=/bin/bash -c 'source /opt/ros/\${ROS_DISTRO}/setup.bash && ros2 launch \${APP_PACKAGE} \${APP_LAUNCH_FILE} namespace:=\${NAMESPACE} param_file:=\${CONFIG_FILE} instance_name:=\${INSTANCE_NAME}'
+# Launch command - source ROS and workspace environment
+ExecStart=/bin/bash -c 'source /opt/ros/\${ROS_DISTRO}/setup.bash && source $INSTANCE_DIR/install/setup.bash && ros2 launch \${APP_PACKAGE} \${APP_LAUNCH_FILE} namespace:=\${NAMESPACE} param_file:=\${CONFIG_FILE} instance_name:=\${INSTANCE_NAME}'
 
 # Security hardening
 NoNewPrivileges=yes
