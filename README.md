@@ -397,15 +397,6 @@ sudo systemctl daemon-reload
 
 ---
 
-## Alternative Deployment
-
-For alternative deployment using emoco-app-runtime (single-instance pattern), see:
-- [SERVICE_DEPLOYMENT.md](SERVICE_DEPLOYMENT.md) - emoco-app-runtime approach
-- [MANUAL_DEPLOYMENT.md](MANUAL_DEPLOYMENT.md) - Manual step-by-step approach  
-- [DEPLOYMENT_COMPARISON.md](DEPLOYMENT_COMPARISON.md) - Comparison of all approaches
-
----
-
 ## License
 
 Apache-2.0
