@@ -124,7 +124,7 @@ sudo tee "$CONFIG_DIR/instance.env" > /dev/null << EOF
 INSTANCE_NAME=$INSTANCE_NAME
 NAMESPACE=$NAMESPACE
 CONFIG_FILE=$CONFIG_DIR/params.yaml
-ROS_DISTRO=jazzy
+ROS_DISTRO=$ROS_DISTRO
 APP_PACKAGE=mechanical_press
 APP_LAUNCH_FILE=mechanical_press.launch.py
 ROS_LOCALHOST_ONLY=1
