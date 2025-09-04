@@ -1,5 +1,6 @@
-# Development configuration
+# Development configuration  
 # Settings for development, testing, and learning
+# Default ROS distro: jazzy (adjust as needed)
 
 /dev/mechanical_press:
   ros__parameters:

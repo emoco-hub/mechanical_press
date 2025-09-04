@@ -12,6 +12,7 @@ INSTANCE_NAME=""
 NAMESPACE=""
 CONFIG_FILE=""
 SERVICE_NAME=""
+ROS_DISTRO="jazzy"  # Default to current LTS
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -32,15 +33,23 @@ while [[ $# -gt 0 ]]; do
       SERVICE_NAME="$2"
       shift 2
       ;;
+    --ros-distro)
+      ROS_DISTRO="$2"
+      shift 2
+      ;;
     --help)
-      echo "Usage: $0 --name INSTANCE_NAME --namespace NAMESPACE --config CONFIG_FILE [--service-name SERVICE_NAME]"
+      echo "Usage: $0 --name INSTANCE_NAME --namespace NAMESPACE --config CONFIG_FILE [OPTIONS]"
+      echo ""
+      echo "Options:"
+      echo "  --service-name SERVICE_NAME    Custom service name (default: mechanical-press-INSTANCE_NAME)"
+      echo "  --ros-distro ROS_DISTRO        ROS distribution (default: humble)"
       echo ""
       echo "Examples:"
       echo "  # Development instance"
       echo "  $0 --name dev-press --namespace /dev --config config/examples/development.yaml"
       echo ""
-      echo "  # Production instance"  
-      echo "  $0 --name factory-line1-press1 --namespace /factory/line1/press1 --config config/examples/factory_line1_press1.yaml"
+      echo "  # Production instance with custom ROS distro"
+      echo "  $0 --name factory-line1-press1 --namespace /factory/line1/press1 --config config/examples/factory_line1_press1.yaml --ros-distro jazzy"
       echo ""
       echo "Available example configs:"
       find "$PROJECT_ROOT/config/examples" -name "*.yaml" 2>/dev/null | sed 's|.*/|  - config/examples/|' || true
