@@ -12,8 +12,6 @@
   
   <author email="ops@example.com">Emoco Labs</author>
 
-  <buildtool_depend>setuptools</buildtool_depend>
-
   <!-- Runtime dependencies -->
   <depend>rclpy</depend>
   <depend>std_msgs</depend>
