@@ -131,9 +131,9 @@ The instance creation scripts (`create-instance.sh`) create **isolated systemd s
   - systemd service definition (`/etc/systemd/system/{SERVICE_NAME}.service`)
 
 ### What Gets Created
-1. **systemd Service File**: Defines how Linux starts/stops/monitors the instance
-2. **Environment Configuration**: Instance-specific ROS settings (namespace, config path)
-3. **Directory Structure**: Isolated directories for logs, state, and configuration
+1. **systemd Service File**: Created at `/etc/systemd/system/{SERVICE_NAME}.service` - defines how Linux starts/stops/monitors the instance
+2. **Environment Configuration**: Instance-specific ROS settings (namespace, config path, distro)
+3. **Directory Structure**: Isolated directories for logs, state, and configuration  
 4. **Application Copy**: Clean build of mechanical_press (isolated from your workspace)
 
 ### Why This Matters
@@ -188,11 +188,11 @@ For distributing to multiple production servers:
 Build a **generic package** with no instance-specific configuration:
 
 ```bash
-# Package for production (defaults to jazzy, specify your ROS distro)
-./scripts/package.sh 1.2.0 jazzy
+# Package for production (defaults to jazzy)
+./scripts/package.sh 1.2.0
 
-# Or explicitly specify the same:
-./scripts/package.sh 1.2.0 jazzy
+# Or specify different ROS distro:
+./scripts/package.sh 1.2.0 humble
 
 # Creates: mechanical-press_1.2.0_amd64.deb
 # Contains: ROS nodes, launch files, default configs
@@ -258,6 +258,104 @@ journalctl -u line1-press1 -f
 # Update instance configuration
 sudo nano /etc/rosapps/mechanical-press-instances/line1-press1/params.yaml
 sudo systemctl restart line1-press1.service
+```
+
+---
+
+## Service Management
+
+### Instance Lifecycle Operations
+
+```bash
+# Start a specific instance
+sudo systemctl start line1-press.service
+
+# Stop a specific instance
+sudo systemctl stop line1-press.service
+
+# Enable instance to start automatically on boot
+sudo systemctl enable line1-press.service
+
+# Disable instance from starting automatically on boot
+sudo systemctl disable line1-press.service
+
+# Restart instance (stop then start)
+sudo systemctl restart line1-press.service
+
+# Reload configuration without full restart
+sudo systemctl reload-or-restart line1-press.service
+
+# Check instance status
+sudo systemctl status line1-press.service
+
+# View instance logs
+journalctl -u line1-press.service -f
+
+# View recent logs
+journalctl -u line1-press.service --since "1 hour ago"
+```
+
+### Managing Multiple Instances
+
+```bash
+# Start all mechanical-press instances
+sudo systemctl start mechanical-press-*
+
+# Stop all mechanical-press instances  
+sudo systemctl stop mechanical-press-*
+
+# Check status of all instances
+sudo systemctl status mechanical-press-*
+
+# Enable all instances for auto-start
+sudo systemctl enable mechanical-press-*
+
+# Disable all instances from auto-start
+sudo systemctl disable mechanical-press-*
+```
+
+### Removing Instances
+
+```bash
+# Stop and disable a specific instance
+sudo systemctl stop line1-press.service
+sudo systemctl disable line1-press.service
+
+# Remove the service definition
+sudo rm /etc/systemd/system/line1-press.service
+sudo systemctl daemon-reload
+
+# Clean up instance files (optional - keeps configuration)
+sudo rm -rf /var/lib/rosapps-mechanical-press-line1-press
+sudo rm -rf /var/log/rosapps-mechanical-press-line1-press
+
+# Remove instance configuration (if no longer needed)
+sudo rm -rf /etc/rosapps/mechanical-press-instances/line1-press
+```
+
+### Troubleshooting
+
+```bash
+# Check if service is running
+sudo systemctl is-active line1-press.service
+
+# Check if service is enabled for auto-start
+sudo systemctl is-enabled line1-press.service
+
+# View detailed service information
+sudo systemctl show line1-press.service
+
+# Check for service failures
+sudo systemctl --failed
+
+# Reset failed state
+sudo systemctl reset-failed line1-press.service
+
+# View logs with more detail
+journalctl -u line1-press.service --no-pager -l
+
+# Follow logs in real-time with timestamps
+journalctl -u line1-press.service -f --output=short-iso
 ```
 
 ---
