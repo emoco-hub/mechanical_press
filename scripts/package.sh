@@ -5,7 +5,7 @@ set -e
 # Usage: ./scripts/package.sh [version] [ros_distro] [ubuntu_codename]
 #
 # Prerequisites:
-#   sudo apt install python3-bloom fakeroot
+#   sudo apt install python3-bloom fakeroot debhelper
 
 VERSION=${1:-"1.0.0"}
 ROS_DISTRO=${2:-"jazzy"}
@@ -41,11 +41,15 @@ if ! command -v fakeroot &> /dev/null; then
     MISSING_DEPS="$MISSING_DEPS fakeroot"
 fi
 
+if ! command -v dh &> /dev/null; then
+    MISSING_DEPS="$MISSING_DEPS debhelper"
+fi
+
 if [ -n "$MISSING_DEPS" ]; then
     echo "Error: Missing required dependencies:$MISSING_DEPS"
     echo ""
     echo "Install all prerequisites with:"
-    echo "  sudo apt install python3-bloom fakeroot"
+    echo "  sudo apt install python3-bloom fakeroot debhelper"
     echo ""
     echo "Or install individually:"
     if [[ $MISSING_DEPS == *"python3-bloom"* ]]; then
@@ -53,6 +57,9 @@ if [ -n "$MISSING_DEPS" ]; then
     fi
     if [[ $MISSING_DEPS == *"fakeroot"* ]]; then
         echo "  sudo apt install fakeroot"
+    fi
+    if [[ $MISSING_DEPS == *"debhelper"* ]]; then
+        echo "  sudo apt install debhelper dh-python"
     fi
     exit 1
 fi
