@@ -109,9 +109,38 @@ sudo systemctl enable --now mechanical-press-dev-press.service
 # Monitor logs
 journalctl -u mechanical-press-dev-press -f
 
-# Update after code changes
+# Update after code changes (creates new snapshot, updates symlink)
 ./scripts/dev-snapshot.sh dev-press
+
+# Note: dev-snapshot.sh creates versioned releases under /opt/rosapps/mechanical-press/releases/
+# while create-instance.sh creates independent instance services
 ```
+
+---
+
+## What Instance Creation Does
+
+The instance creation scripts (`create-instance.sh`) create **isolated systemd services** for each press instance. Here's what happens behind the scenes:
+
+### Service Architecture
+- **Binary Separation**: Core ROS functionality is packaged once and shared
+- **Instance Isolation**: Each instance gets its own:
+  - Configuration files (`/etc/rosapps/mechanical-press-instances/{NAME}/params.yaml`)
+  - Log directory (`/var/log/rosapps-mechanical-press-{NAME}/`)
+  - State directory (`/var/lib/rosapps-mechanical-press-{NAME}/`)
+  - systemd service definition (`/etc/systemd/system/{SERVICE_NAME}.service`)
+
+### What Gets Created
+1. **systemd Service File**: Defines how Linux starts/stops/monitors the instance
+2. **Environment Configuration**: Instance-specific ROS settings (namespace, config path)
+3. **Directory Structure**: Isolated directories for logs, state, and configuration
+4. **Application Copy**: Clean build of mechanical_press (isolated from your workspace)
+
+### Why This Matters
+- **Reliability**: Services auto-restart on failure, survive system reboots
+- **Isolation**: Multiple press instances run independently 
+- **Monitoring**: Standard Linux service management (`systemctl`, `journalctl`)
+- **Security**: Services run as dedicated user (`emoco`) with limited permissions
 
 ---
 

@@ -44,6 +44,7 @@ sudo mkdir -p "$RELEASE_DIR"
 sudo cp -r "$INSTALL_BASE"/* "$RELEASE_DIR/"
 
 # Create runtime script
+sudo mkdir -p "$RELEASE_DIR/bin"
 sudo tee "$RELEASE_DIR/bin/run.sh" > /dev/null << EOF
 #!/usr/bin/env bash
 set -eo pipefail
