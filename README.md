@@ -90,7 +90,7 @@ For development workflow with system services:
   --config config/examples/development.yaml
 
 # Or specify ROS distro via environment variable
-export ROS_DISTRO=humble
+export ROS_DISTRO=jazzy
 ./scripts/create-instance.sh \
   --name dev-press \
   --namespace /dev \
@@ -101,7 +101,7 @@ export ROS_DISTRO=humble
   --name dev-press \
   --namespace /dev \
   --config config/examples/development.yaml \
-  --ros-distro humble
+  --ros-distro jazzy
 
 # Start the instance
 sudo systemctl enable --now mechanical-press-dev-press.service
@@ -117,7 +117,44 @@ journalctl -u mechanical-press-dev-press -f
 
 ## Production Deployment
 
-### 1. Package Core Functionality
+### Local Production Deployment (Single Server)
+
+For production services running on the same server as development (common in industrial/edge scenarios):
+
+```bash
+# 1. Package core functionality locally
+./scripts/package.sh 1.2.0
+
+# 2. Install package locally
+sudo dpkg -i mechanical-press_1.2.0_amd64.deb
+
+# 3. Create production instances with proper configurations
+./scripts/create-instance.sh \
+  --name line1-press \
+  --namespace /production/line1/press \
+  --config config/examples/factory_line1_press1.yaml \
+  --service-name line1-press
+
+./scripts/create-instance.sh \
+  --name maintenance-station \
+  --namespace /maintenance/station1 \
+  --config config/examples/maintenance_press.yaml \
+  --service-name maintenance-station
+
+# 4. Start production services
+sudo systemctl enable --now line1-press.service
+sudo systemctl enable --now maintenance-station.service
+
+# 5. Monitor production instances
+journalctl -u line1-press -f
+sudo systemctl status maintenance-station.service
+```
+
+### Multi-Server Production Deployment
+
+For distributing to multiple production servers:
+
+#### 1. Package Core Functionality
 
 Build a **generic package** with no instance-specific configuration:
 
@@ -125,16 +162,17 @@ Build a **generic package** with no instance-specific configuration:
 # Package for production (defaults to jazzy, specify your ROS distro)
 ./scripts/package.sh 1.2.0 jazzy
 
-# Or for ROS humble:
-./scripts/package.sh 1.2.0 humble
+# Or explicitly specify the same:
+./scripts/package.sh 1.2.0 jazzy
 
 # Creates: mechanical-press_1.2.0_amd64.deb
 # Contains: ROS nodes, launch files, default configs
 # No hardcoded: namespaces, production parameters
 ```
 
-### 2. Deploy to Production
+#### 2. Deploy to Production Servers
 
+**Manual deployment (shown here):**
 ```bash
 # Transfer to production server
 scp mechanical-press_1.2.0_amd64.deb production-server:
@@ -144,7 +182,9 @@ ssh production-server
 sudo dpkg -i mechanical-press_1.2.0_amd64.deb
 ```
 
-### 3. Create Production Instances
+**Note:** For large-scale deployments, consider using a package repository (apt repository, Artifactory, etc.) instead of manual file transfers, but that's beyond the scope of this guide.
+
+#### 3. Create Production Instances
 
 Create multiple instances with production-specific configurations:
 
@@ -162,10 +202,10 @@ Create multiple instances with production-specific configurations:
   --namespace /factory/line2/press1 \
   --config config/examples/light_assembly.yaml \
   --service-name line2-press1 \
-  --ros-distro humble
+  --ros-distro jazzy
 
 # Maintenance station press (environment variable for ROS distro)
-export ROS_DISTRO=humble
+export ROS_DISTRO=jazzy
 ./scripts/create-instance.sh \
   --name maintenance-press \
   --namespace /maintenance/test_station \
@@ -173,7 +213,7 @@ export ROS_DISTRO=humble
   --service-name maintenance-press
 ```
 
-### 4. Manage Production Instances
+#### 4. Manage Multi-Server Production Instances
 
 ```bash
 # Start specific instances
@@ -359,8 +399,8 @@ The multi-instance pattern matches real industrial deployments where:
 # Build new version (specify ROS distro if different from jazzy)
 ./scripts/package.sh 1.2.1 jazzy
 
-# Or for ROS humble:
-# ./scripts/package.sh 1.2.1 humble
+# Or explicitly specify distro:
+# ./scripts/package.sh 1.2.1 jazzy
 
 # Deploy to production
 scp mechanical-press_1.2.1_amd64.deb production-server:
