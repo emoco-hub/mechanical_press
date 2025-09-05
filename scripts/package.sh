@@ -3,26 +3,57 @@ set -e
 
 # Package mechanical press using standard ROS bloom workflow
 # Usage: ./scripts/package.sh [version] [ros_distro] [ubuntu_codename]
+#
+# Prerequisites:
+#   sudo apt install python3-bloom fakeroot
 
 VERSION=${1:-"1.0.0"}
 ROS_DISTRO=${2:-"jazzy"}
-UBUNTU_CODENAME=${3:-"noble"}  # Default to Ubuntu 24.04 Noble for Jazzy
+# Default to Ubuntu version officially supported by the ROS distro
+if [ "$ROS_DISTRO" = "jazzy" ]; then
+    UBUNTU_CODENAME=${3:-"noble"}
+elif [ "$ROS_DISTRO" = "humble" ]; then
+    UBUNTU_CODENAME=${3:-"jammy"}
+else
+    UBUNTU_CODENAME=${3:-"jammy"}  # Safe fallback
+fi
 
 echo "Packaging mechanical_press version $VERSION for ROS $ROS_DISTRO (Ubuntu $UBUNTU_CODENAME)"
 echo "Using standard ROS bloom packaging workflow"
 
+# Warn about potentially unsupported combinations
+if [ "$ROS_DISTRO" = "humble" ] && [ "$UBUNTU_CODENAME" = "noble" ]; then
+    echo "⚠ Warning: ROS Humble with Ubuntu Noble may not be fully supported in rosdep"
+    echo "  Consider using: ./scripts/package.sh $VERSION humble jammy"
+elif [ "$ROS_DISTRO" = "jazzy" ] && [ "$UBUNTU_CODENAME" = "jammy" ]; then
+    echo "⚠ Warning: ROS Jazzy with Ubuntu Jammy may have limited support"
+    echo "  Consider using: ./scripts/package.sh $VERSION jazzy noble"
+fi
+echo ""
+
 # Check dependencies
+MISSING_DEPS=""
 if ! command -v bloom-generate &> /dev/null; then
-    echo "Error: bloom not found. Install with:"
-    echo "  sudo apt install python3-bloom"
-    echo "  # or"
-    echo "  pip3 install bloom"
-    exit 1
+    MISSING_DEPS="$MISSING_DEPS python3-bloom"
 fi
 
 if ! command -v fakeroot &> /dev/null; then
-    echo "Error: fakeroot not found. Install with:"
-    echo "  sudo apt install fakeroot"
+    MISSING_DEPS="$MISSING_DEPS fakeroot"
+fi
+
+if [ -n "$MISSING_DEPS" ]; then
+    echo "Error: Missing required dependencies:$MISSING_DEPS"
+    echo ""
+    echo "Install all prerequisites with:"
+    echo "  sudo apt install python3-bloom fakeroot"
+    echo ""
+    echo "Or install individually:"
+    if [[ $MISSING_DEPS == *"python3-bloom"* ]]; then
+        echo "  sudo apt install python3-bloom  # or: pip3 install bloom"
+    fi
+    if [[ $MISSING_DEPS == *"fakeroot"* ]]; then
+        echo "  sudo apt install fakeroot"
+    fi
     exit 1
 fi
 

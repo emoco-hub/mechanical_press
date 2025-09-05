@@ -151,11 +151,14 @@ The instance creation scripts (`create-instance.sh`) create **isolated systemd s
 For production services running on the same server as development (common in industrial/edge scenarios):
 
 ```bash
+# 0. Install packaging prerequisites
+sudo apt install python3-bloom fakeroot
+
 # 1. Package core functionality locally
 ./scripts/package.sh 1.2.0
 
 # 2. Install package locally
-sudo dpkg -i mechanical-press_1.2.0_amd64.deb
+sudo dpkg -i ros-jazzy-mechanical-press_1.2.0_amd64.deb
 
 # 3. Create production instances with proper configurations
 ./scripts/create-instance.sh \
@@ -185,7 +188,12 @@ For distributing to multiple production servers:
 
 #### 1. Package Core Functionality
 
-Build a **generic package** with no instance-specific configuration:
+**Prerequisites:** Install ROS packaging tools:
+```bash
+sudo apt install python3-bloom fakeroot
+```
+
+Build a **generic package** with no instance-specific configuration using standard ROS bloom workflow:
 
 ```bash
 # Package for production (defaults to jazzy)
@@ -194,7 +202,7 @@ Build a **generic package** with no instance-specific configuration:
 # Or specify different ROS distro:
 ./scripts/package.sh 1.2.0 humble
 
-# Creates: mechanical-press_1.2.0_amd64.deb
+# Creates: ros-humble-mechanical-press_1.2.0_amd64.deb
 # Contains: ROS nodes, launch files, default configs
 # No hardcoded: namespaces, production parameters
 ```
@@ -204,11 +212,11 @@ Build a **generic package** with no instance-specific configuration:
 **Manual deployment (shown here):**
 ```bash
 # Transfer to production server
-scp mechanical-press_1.2.0_amd64.deb production-server:
+scp ros-humble-mechanical-press_1.2.0_amd64.deb production-server:
 
 # Install core package
 ssh production-server
-sudo dpkg -i mechanical-press_1.2.0_amd64.deb
+sudo dpkg -i ros-humble-mechanical-press_1.2.0_amd64.deb
 ```
 
 **Note:** For large-scale deployments, consider using a package repository (apt repository, Artifactory, etc.) instead of manual file transfers, but that's beyond the scope of this guide.
