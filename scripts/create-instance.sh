@@ -88,28 +88,39 @@ if [ -z "$SERVICE_NAME" ]; then
   SERVICE_NAME="mechanical-press-$INSTANCE_NAME"
 fi
 
-# Auto-detect or prompt for workspace if not provided
-if [ -z "$WORKSPACE_PATH" ]; then
-  # Try common workspace locations
-  if [ -d "$HOME/ros2_ws/src/mechanical_press" ]; then
-    WORKSPACE_PATH="$HOME/ros2_ws"
-    echo "Auto-detected workspace: $WORKSPACE_PATH"
-  elif [ -f "../../package.xml" ] && [ -d "../../src" ]; then
-    # We're in a package directory, workspace is two levels up
-    WORKSPACE_PATH="$(cd ../.. && pwd)"
-    echo "Auto-detected workspace: $WORKSPACE_PATH"
-  else
-    echo "Could not auto-detect workspace containing mechanical_press package."
-    echo "Common locations checked:"
-    echo "  - ~/ros2_ws/src/mechanical_press"
-    echo "  - Current directory structure"
-    echo ""
-    read -p "Please enter your ROS workspace path: " WORKSPACE_PATH
-  fi
+# Check if mechanical press package is installed
+PACKAGE_INSTALLED=false
+if dpkg -l mechanical-press &>/dev/null; then
+  PACKAGE_INSTALLED=true
+  echo "✓ Found installed mechanical-press package"
+else
+  echo "⚠ mechanical-press package not installed - will build from source"
 fi
 
-# Expand tilde in workspace path
-WORKSPACE_PATH="${WORKSPACE_PATH/#\~/$HOME}"
+# Auto-detect or prompt for workspace if not provided (only needed for source builds)
+if [ "$PACKAGE_INSTALLED" = false ]; then
+  if [ -z "$WORKSPACE_PATH" ]; then
+    # Try common workspace locations
+    if [ -d "$HOME/ros2_ws/src/mechanical_press" ]; then
+      WORKSPACE_PATH="$HOME/ros2_ws"
+      echo "Auto-detected workspace: $WORKSPACE_PATH"
+    elif [ -f "../../package.xml" ] && [ -d "../../src" ]; then
+      # We're in a package directory, workspace is two levels up
+      WORKSPACE_PATH="$(cd ../.. && pwd)"
+      echo "Auto-detected workspace: $WORKSPACE_PATH"
+    else
+      echo "Could not auto-detect workspace containing mechanical_press package."
+      echo "Common locations checked:"
+      echo "  - ~/ros2_ws/src/mechanical_press"
+      echo "  - Current directory structure"
+      echo ""
+      read -p "Please enter your ROS workspace path: " WORKSPACE_PATH
+    fi
+  fi
+
+  # Expand tilde in workspace path
+  WORKSPACE_PATH="${WORKSPACE_PATH/#\~/$HOME}"
+fi
 
 # Resolve config file path
 if [ ! -f "$CONFIG_FILE" ]; then
@@ -126,14 +137,13 @@ echo "  Instance Name: $INSTANCE_NAME"
 echo "  Namespace: $NAMESPACE" 
 echo "  Config File: $CONFIG_FILE"
 echo "  Service Name: $SERVICE_NAME"
-echo ""
-
-# Check if mechanical press package is installed
-if ! dpkg -l mechanical-press &>/dev/null; then
-  echo "Warning: mechanical-press package not installed"
-  echo "You may need to run: sudo dpkg -i mechanical-press_*.deb"
-  echo "Continuing anyway for development setup..."
+if [ "$PACKAGE_INSTALLED" = true ]; then
+  echo "  Install Method: Using installed package"
+else
+  echo "  Install Method: Building from source"
+  echo "  Workspace: $WORKSPACE_PATH"
 fi
+echo ""
 
 # Create instance-specific directories
 INSTANCE_DIR="/opt/rosapps/mechanical-press-instances/$INSTANCE_NAME"
@@ -154,43 +164,67 @@ sudo useradd -r -s /bin/false emoco 2>/dev/null || true
 echo "Installing configuration..."
 sudo cp "$CONFIG_FILE" "$CONFIG_DIR/params.yaml"
 
-# Build and install only mechanical_press to service location  
-echo "Building and installing mechanical_press..."
-echo "Workspace: $WORKSPACE_PATH"
+# Install mechanical_press to service location
+echo "Installing mechanical_press..."
 
-# Check if source exists
-if [ ! -d "$WORKSPACE_PATH/src/mechanical_press" ]; then
-    echo "Error: mechanical_press source not found at $WORKSPACE_PATH/src/mechanical_press"
-    echo ""
-    echo "Make sure:"
-    echo "  1. You're in the correct workspace directory"
-    echo "  2. The mechanical_press package is in the src/ directory"
-    echo "  3. The workspace path is correct: $WORKSPACE_PATH"
-    exit 1
-fi
-
-if [ -d "$WORKSPACE_PATH" ]; then
-    # Create temporary clean build for just mechanical_press
-    TEMP_INSTALL="/tmp/mechanical_press_install_$(date +%s)"
+if [ "$PACKAGE_INSTALLED" = true ]; then
+    # Use installed package
+    echo "Using installed mechanical-press package..."
     
-    echo "Building mechanical_press in clean environment..."
-    cd "$WORKSPACE_PATH"
-    colcon build --packages-select mechanical_press \
-        --install-base "$TEMP_INSTALL" \
-        --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+    # Find the installed package location
+    PACKAGE_LOCATION="/opt/rosapps/mechanical-press/current"
+    if [ ! -d "$PACKAGE_LOCATION" ]; then
+        echo "Error: Package installed but not found at $PACKAGE_LOCATION"
+        echo "Try installing with: sudo dpkg -i mechanical-press_*.deb"
+        exit 1
+    fi
     
-    # Copy only the clean build to service location
+    # Copy package installation to instance location
     sudo mkdir -p "$INSTANCE_DIR/install"
-    sudo cp -r "$TEMP_INSTALL"/* "$INSTANCE_DIR/install/"
+    sudo cp -r "$PACKAGE_LOCATION"/* "$INSTANCE_DIR/install/"
     sudo chown -R emoco:emoco "$INSTANCE_DIR/install"
     
-    # Cleanup
-    rm -rf "$TEMP_INSTALL"
+    echo "✓ Installed from package to service location"
     
-    echo "✓ Installed clean mechanical_press build to service"
 else
-    echo "Error: Workspace directory not found at $WORKSPACE_PATH"
-    exit 1
+    # Build from source (development mode)
+    echo "Building from source..."
+    echo "Workspace: $WORKSPACE_PATH"
+    
+    # Check if source exists
+    if [ ! -d "$WORKSPACE_PATH/src/mechanical_press" ]; then
+        echo "Error: mechanical_press source not found at $WORKSPACE_PATH/src/mechanical_press"
+        echo ""
+        echo "Make sure:"
+        echo "  1. You're in the correct workspace directory"
+        echo "  2. The mechanical_press package is in the src/ directory"
+        echo "  3. The workspace path is correct: $WORKSPACE_PATH"
+        exit 1
+    fi
+
+    if [ -d "$WORKSPACE_PATH" ]; then
+        # Create temporary clean build for just mechanical_press
+        TEMP_INSTALL="/tmp/mechanical_press_install_$(date +%s)"
+        
+        echo "Building mechanical_press in clean environment..."
+        cd "$WORKSPACE_PATH"
+        colcon build --packages-select mechanical_press \
+            --install-base "$TEMP_INSTALL" \
+            --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+        
+        # Copy only the clean build to service location
+        sudo mkdir -p "$INSTANCE_DIR/install"
+        sudo cp -r "$TEMP_INSTALL"/* "$INSTANCE_DIR/install/"
+        sudo chown -R emoco:emoco "$INSTANCE_DIR/install"
+        
+        # Cleanup
+        rm -rf "$TEMP_INSTALL"
+        
+        echo "✓ Built and installed from source to service location"
+    else
+        echo "Error: Workspace directory not found at $WORKSPACE_PATH"
+        exit 1
+    fi
 fi
 
 # Create instance environment file
