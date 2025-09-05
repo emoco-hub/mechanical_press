@@ -83,11 +83,25 @@ ros2 launch mechanical_press mechanical_press.launch.py \
 For development workflow with system services:
 
 ```bash
-# Create development instance
+# Create development instance (uses ROS jazzy by default)
 ./scripts/create-instance.sh \
   --name dev-press \
   --namespace /dev \
   --config config/examples/development.yaml
+
+# Or specify ROS distro via environment variable
+export ROS_DISTRO=humble
+./scripts/create-instance.sh \
+  --name dev-press \
+  --namespace /dev \
+  --config config/examples/development.yaml
+
+# Or specify ROS distro via parameter
+./scripts/create-instance.sh \
+  --name dev-press \
+  --namespace /dev \
+  --config config/examples/development.yaml \
+  --ros-distro humble
 
 # Start the instance
 sudo systemctl enable --now mechanical-press-dev-press.service
@@ -108,8 +122,11 @@ journalctl -u mechanical-press-dev-press -f
 Build a **generic package** with no instance-specific configuration:
 
 ```bash
-# Package for production (replace with your ROS distro)
+# Package for production (defaults to jazzy, specify your ROS distro)
 ./scripts/package.sh 1.2.0 jazzy
+
+# Or for ROS humble:
+./scripts/package.sh 1.2.0 humble
 
 # Creates: mechanical-press_1.2.0_amd64.deb
 # Contains: ROS nodes, launch files, default configs
@@ -132,22 +149,24 @@ sudo dpkg -i mechanical-press_1.2.0_amd64.deb
 Create multiple instances with production-specific configurations:
 
 ```bash
-# Factory Line 1 - Heavy duty stamping press
-sudo ./scripts/create-instance.sh \
+# Factory Line 1 - Heavy duty stamping press (uses installed package's ROS distro)
+./scripts/create-instance.sh \
   --name factory-line1-press1 \
   --namespace /factory/line1/press1 \
   --config config/examples/factory_line1_press1.yaml \
   --service-name line1-press1
 
-# Factory Line 2 - Light assembly press
-sudo ./scripts/create-instance.sh \
+# Factory Line 2 - Light assembly press (specify ROS distro if needed)
+./scripts/create-instance.sh \
   --name factory-line2-press1 \
   --namespace /factory/line2/press1 \
   --config config/examples/light_assembly.yaml \
-  --service-name line2-press1
+  --service-name line2-press1 \
+  --ros-distro humble
 
-# Maintenance station press
-sudo ./scripts/create-instance.sh \
+# Maintenance station press (environment variable for ROS distro)
+export ROS_DISTRO=humble
+./scripts/create-instance.sh \
   --name maintenance-press \
   --namespace /maintenance/test_station \
   --config config/examples/maintenance_press.yaml \
@@ -337,8 +356,11 @@ The multi-instance pattern matches real industrial deployments where:
 ### Update Core Package (All Instances)
 
 ```bash
-# Build new version
+# Build new version (specify ROS distro if different from jazzy)
 ./scripts/package.sh 1.2.1 jazzy
+
+# Or for ROS humble:
+# ./scripts/package.sh 1.2.1 humble
 
 # Deploy to production
 scp mechanical-press_1.2.1_amd64.deb production-server:
