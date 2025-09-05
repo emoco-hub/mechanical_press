@@ -78,195 +78,69 @@ ros2 launch mechanical_press mechanical_press.launch.py \
   instance_name:=test_maintenance
 ```
 
-### 3. Development Instance (System Service)
+### 3. Run as Service ("Production" Deployment)
 
-For development workflow with system services:
+This section shows the simple "run as service" workflow - perfect for the UI button scenario:
 
 ```bash
-# Create development instance (uses ROS jazzy by default)
+# Create and run a service instance with smart defaults
 ./scripts/create-instance.sh \
-  --name dev-press \
-  --namespace /dev \
+  --name my-press \
+  --namespace /my_press \
   --config config/examples/development.yaml
 
-# Or specify ROS distro via environment variable
-export ROS_DISTRO=jazzy
-./scripts/create-instance.sh \
-  --name dev-press \
-  --namespace /dev \
-  --config config/examples/development.yaml
-
-# Or specify ROS distro via parameter
-./scripts/create-instance.sh \
-  --name dev-press \
-  --namespace /dev \
-  --config config/examples/development.yaml \
-  --ros-distro jazzy
-
-# Start the instance
-sudo systemctl enable --now mechanical-press-dev-press.service
+# Start the service
+sudo systemctl enable --now mechanical-press-my-press.service
 
 # Monitor logs
-journalctl -u mechanical-press-dev-press -f
+journalctl -u mechanical-press-my-press -f
 
-# Update after code changes (creates new snapshot, updates symlink)
-./scripts/dev-snapshot.sh dev-press
+# Update after code changes (development workflow)
+./scripts/dev-snapshot.sh my-press
+sudo systemctl restart mechanical-press-my-press.service
+```
 
-# Note: dev-snapshot.sh creates versioned releases under /opt/rosapps/mechanical-press/releases/
-# while create-instance.sh creates independent instance services
+**That's it!** This creates a reliable systemd service that:
+- Automatically starts on boot
+- Restarts on failure  
+- Has isolated logs and configuration
+- Uses your development build directly (no packaging complexity)
+
+### Advanced: Package-Based Deployment
+
+For environments that need versioned packages:
+
+```bash
+# 1. Create a deployment package (optional - for version control)
+./scripts/package.sh 1.2.0
+
+# 2. Install the package
+sudo dpkg -i mechanical-press_1.2.0_amd64.deb
+
+# 3. Create instances (will use the package instead of building from source)
+./scripts/create-instance.sh \
+  --name production-press \
+  --namespace /production/press1 \
+  --config config/examples/factory_line1_press1.yaml
 ```
 
 ---
 
 ## What Instance Creation Does
 
-The instance creation scripts (`create-instance.sh`) create **isolated systemd services** for each press instance. Here's what happens behind the scenes:
-
-### Service Architecture
-- **Binary Separation**: Core ROS functionality is packaged once and shared
-- **Instance Isolation**: Each instance gets its own:
-  - Configuration files (`/etc/rosapps/mechanical-press-instances/{NAME}/params.yaml`)
-  - Log directory (`/var/log/rosapps-mechanical-press-{NAME}/`)
-  - State directory (`/var/lib/rosapps-mechanical-press-{NAME}/`)
-  - systemd service definition (`/etc/systemd/system/{SERVICE_NAME}.service`)
+The `create-instance.sh` script creates **isolated systemd services** for each press instance:
 
 ### What Gets Created
 1. **systemd Service File**: Created at `/etc/systemd/system/{SERVICE_NAME}.service` - defines how Linux starts/stops/monitors the instance
-2. **Environment Configuration**: Instance-specific ROS settings (namespace, config path, distro)
-3. **Directory Structure**: Isolated directories for logs, state, and configuration  
+2. **Instance Configuration**: Your YAML config copied to `/etc/rosapps/mechanical-press-instances/{NAME}/params.yaml`
+3. **Isolated Directories**: Separate logs (`/var/log/rosapps-mechanical-press-{NAME}/`) and state directories
 4. **Application Copy**: Clean build of mechanical_press (isolated from your workspace)
 
-### Why This Matters
-- **Reliability**: Services auto-restart on failure, survive system reboots
-- **Isolation**: Multiple press instances run independently 
-- **Monitoring**: Standard Linux service management (`systemctl`, `journalctl`)
-- **Security**: Services run as dedicated user (`emoco`) with limited permissions
-
----
-
-## Production Deployment
-
-### Local Production Deployment (Single Server)
-
-For production services running on the same server as development (common in industrial/edge scenarios):
-
-```bash
-# 0. Install packaging prerequisites
-sudo apt install python3-bloom fakeroot
-
-# 1. Package core functionality locally
-./scripts/package.sh 1.2.0
-
-# 2. Install package locally
-sudo dpkg -i ros-jazzy-mechanical-press_1.2.0_amd64.deb
-
-# 3. Create production instances with proper configurations
-./scripts/create-instance.sh \
-  --name line1-press \
-  --namespace /production/line1/press \
-  --config config/examples/factory_line1_press1.yaml \
-  --service-name line1-press
-
-./scripts/create-instance.sh \
-  --name maintenance-station \
-  --namespace /maintenance/station1 \
-  --config config/examples/maintenance_press.yaml \
-  --service-name maintenance-station
-
-# 4. Start production services
-sudo systemctl enable --now line1-press.service
-sudo systemctl enable --now maintenance-station.service
-
-# 5. Monitor production instances
-journalctl -u line1-press -f
-sudo systemctl status maintenance-station.service
-```
-
-### Multi-Server Production Deployment
-
-For distributing to multiple production servers:
-
-#### 1. Package Core Functionality
-
-**Prerequisites:** Install ROS packaging tools:
-```bash
-sudo apt install python3-bloom fakeroot
-```
-
-Build a **generic package** with no instance-specific configuration using standard ROS bloom workflow:
-
-```bash
-# Package for production (defaults to jazzy)
-./scripts/package.sh 1.2.0
-
-# Or specify different ROS distro:
-./scripts/package.sh 1.2.0 humble
-
-# Creates: ros-humble-mechanical-press_1.2.0_amd64.deb
-# Contains: ROS nodes, launch files, default configs
-# No hardcoded: namespaces, production parameters
-```
-
-#### 2. Deploy to Production Servers
-
-**Manual deployment (shown here):**
-```bash
-# Transfer to production server
-scp ros-humble-mechanical-press_1.2.0_amd64.deb production-server:
-
-# Install core package
-ssh production-server
-sudo dpkg -i ros-humble-mechanical-press_1.2.0_amd64.deb
-```
-
-**Note:** For large-scale deployments, consider using a package repository (apt repository, Artifactory, etc.) instead of manual file transfers, but that's beyond the scope of this guide.
-
-#### 3. Create Production Instances
-
-Create multiple instances with production-specific configurations:
-
-```bash
-# Factory Line 1 - Heavy duty stamping press (uses installed package's ROS distro)
-./scripts/create-instance.sh \
-  --name factory-line1-press1 \
-  --namespace /factory/line1/press1 \
-  --config config/examples/factory_line1_press1.yaml \
-  --service-name line1-press1
-
-# Factory Line 2 - Light assembly press (specify ROS distro if needed)
-./scripts/create-instance.sh \
-  --name factory-line2-press1 \
-  --namespace /factory/line2/press1 \
-  --config config/examples/light_assembly.yaml \
-  --service-name line2-press1 \
-  --ros-distro jazzy
-
-# Maintenance station press (environment variable for ROS distro)
-export ROS_DISTRO=jazzy
-./scripts/create-instance.sh \
-  --name maintenance-press \
-  --namespace /maintenance/test_station \
-  --config config/examples/maintenance_press.yaml \
-  --service-name maintenance-press
-```
-
-#### 4. Manage Multi-Server Production Instances
-
-```bash
-# Start specific instances
-sudo systemctl enable --now line1-press1.service
-sudo systemctl enable --now maintenance-press.service
-
-# Check all instances
-sudo systemctl status mechanical-press-*
-
-# Monitor specific instance
-journalctl -u line1-press1 -f
-
-# Update instance configuration
-sudo nano /etc/rosapps/mechanical-press-instances/line1-press1/params.yaml
-sudo systemctl restart line1-press1.service
-```
+### Why This Approach
+- **"Run as Service" Button Ready**: Simple command perfect for UI integration
+- **Reliable**: Services auto-restart on failure, survive system reboots
+- **Transparent**: You see exactly what gets deployed and where
+- **No Complex Dependencies**: Just needs `colcon build` (already have for development)
 
 ---
 
@@ -526,34 +400,34 @@ The multi-instance pattern matches real industrial deployments where:
 
 ---
 
-## Production Updates
+## Updates and Changes
 
-### Update Core Package (All Instances)
+### Update Service After Code Changes
 
 ```bash
-# Build new version (specify ROS distro if different from jazzy)
-./scripts/package.sh 1.2.1 jazzy
-
-# Or explicitly specify distro:
-# ./scripts/package.sh 1.2.1 jazzy
-
-# Deploy to production
-scp mechanical-press_1.2.1_amd64.deb production-server:
-ssh production-server
-sudo dpkg -i mechanical-press_1.2.1_amd64.deb
-
-# Restart all instances
-sudo systemctl restart mechanical-press-*
+# Development workflow - update running service with latest code
+./scripts/dev-snapshot.sh my-press
+sudo systemctl restart mechanical-press-my-press.service
 ```
 
-### Update Individual Instance
+### Update Instance Configuration
 
 ```bash
-# Modify specific instance configuration
-sudo nano /etc/rosapps/mechanical-press-instances/line1-press1/params.yaml
+# Modify instance-specific settings
+sudo nano /etc/rosapps/mechanical-press-instances/my-press/params.yaml
 
-# Restart only that instance
-sudo systemctl restart line1-press1.service
+# Restart to apply changes
+sudo systemctl restart mechanical-press-my-press.service
+```
+
+### Create Additional Instances
+
+```bash
+# Add more instances for different robots/configurations
+./scripts/create-instance.sh \
+  --name robot2 \
+  --namespace /robot2 \
+  --config config/examples/maintenance_press.yaml
 ```
 
 ---

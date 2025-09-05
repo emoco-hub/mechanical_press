@@ -1,129 +1,152 @@
 #!/bin/bash
 set -e
 
-# Package mechanical press using standard ROS bloom workflow
-# Usage: ./scripts/package.sh [version] [ros_distro] [ubuntu_codename]
-#
-# Prerequisites:
-#   sudo apt install python3-bloom fakeroot debhelper
+# Create deployment snapshot for mechanical press
+# Usage: ./scripts/package.sh [version] [ros_distro]
 
 VERSION=${1:-"1.0.0"}
 ROS_DISTRO=${2:-"jazzy"}
-# Default to Ubuntu version officially supported by the ROS distro
-if [ "$ROS_DISTRO" = "jazzy" ]; then
-    UBUNTU_CODENAME=${3:-"noble"}
-elif [ "$ROS_DISTRO" = "humble" ]; then
-    UBUNTU_CODENAME=${3:-"jammy"}
-else
-    UBUNTU_CODENAME=${3:-"jammy"}  # Safe fallback
+APP_NAME="mechanical-press"
+LAUNCH_PKG="mechanical_press"
+LAUNCH_FILE="mechanical_press.launch.py"
+
+echo "Creating deployment package: $APP_NAME version $VERSION for ROS $ROS_DISTRO"
+echo "Using simple snapshot approach for transparency"
+
+# Build to temporary location
+echo "Building workspace..."
+INSTALL_BASE="/tmp/${APP_NAME}-${VERSION}"
+source "/opt/ros/$ROS_DISTRO/setup.bash"
+colcon build --merge-install --packages-up-to "$LAUNCH_PKG" \
+  --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
+  --install-base "$INSTALL_BASE"
+
+# Create package structure  
+echo "Creating package structure..."
+PKG_DIR="/tmp/${APP_NAME}-pkg"
+rm -rf "$PKG_DIR"
+mkdir -p "$PKG_DIR/opt/rosapps/${APP_NAME}/releases/${VERSION}"
+mkdir -p "$PKG_DIR/DEBIAN"
+
+# Copy application files
+cp -r "$INSTALL_BASE"/* "$PKG_DIR/opt/rosapps/${APP_NAME}/releases/${VERSION}/"
+
+# Create runtime script
+echo "Creating runtime script..."
+mkdir -p "$PKG_DIR/opt/rosapps/${APP_NAME}/releases/${VERSION}/bin"
+cat > "$PKG_DIR/opt/rosapps/${APP_NAME}/releases/${VERSION}/bin/run.sh" << EOF
+#!/usr/bin/env bash
+set -eo pipefail
+: "\${ROS_DISTRO:=$ROS_DISTRO}"
+: "\${INSTALL_BASE:=/opt/rosapps/${APP_NAME}/current}"
+: "\${LAUNCH_PKG:=$LAUNCH_PKG}"
+: "\${LAUNCH_FILE:=$LAUNCH_FILE}"
+: "\${PARAM_FILE:=}"
+: "\${NAMESPACE:=}"
+: "\${EXTRA_ARGS:=}"
+source "/opt/ros/\${ROS_DISTRO}/setup.bash"
+source "\${INSTALL_BASE}/setup.bash"
+if [[ -n "\${NAMESPACE:-}" ]]; then
+  NAMESPACE="\${NAMESPACE//-/_}"
+fi
+exec ros2 launch "\${LAUNCH_PKG}" "\${LAUNCH_FILE}" \
+  \${PARAM_FILE:+ "param_file:=\${PARAM_FILE}"} \
+  \${NAMESPACE:+ "namespace:=\${NAMESPACE}"} \
+  \${EXTRA_ARGS}
+EOF
+chmod +x "$PKG_DIR/opt/rosapps/${APP_NAME}/releases/${VERSION}/bin/run.sh"
+
+# Create control file
+echo "Creating package metadata..."
+ARCH=$(dpkg --print-architecture)
+cat > "$PKG_DIR/DEBIAN/control" << EOF
+Package: $APP_NAME
+Version: $VERSION
+Section: utils
+Priority: optional
+Architecture: $ARCH
+Maintainer: Emoco Labs <ops@example.com>
+Description: Mechanical Press ROS 2 Application
+ ROS 2 application for controlling mechanical press operations.
+ Built for ROS $ROS_DISTRO distribution.
+EOF
+
+# Create post-installation script
+cat > "$PKG_DIR/DEBIAN/postinst" << 'EOF'
+#!/bin/sh
+set -e
+
+APP="mechanical-press"
+VERSION="$VERSION"
+BASE="/opt/rosapps/$APP"
+CUR="$BASE/current"
+REL="$BASE/releases/$VERSION"
+ETC="/etc/rosapps/$APP"
+ENV="/etc/rosapps/$APP.env"
+
+# Create user
+useradd -r -s /bin/false emoco 2>/dev/null || true
+
+# Create directories
+install -d -m 0755 -o emoco -g emoco "/var/lib/rosapps-$APP" "/var/log/rosapps-$APP"
+mkdir -p "$ETC"
+
+# Create environment file if it doesn't exist
+if [ ! -f "$ENV" ]; then
+  cat > "$ENV" << ENVEOF
+APP_NAME=$APP
+ROS_DISTRO=$ROS_DISTRO
+INSTALL_BASE=$CUR
+LAUNCH_PKG=$LAUNCH_PKG
+LAUNCH_FILE=$LAUNCH_FILE
+PARAM_FILE=/etc/rosapps/$APP/params.yaml
+NAMESPACE=/${APP//-/_}
+ROS_LOCALHOST_ONLY=1
+ENVEOF
 fi
 
-echo "Packaging mechanical_press version $VERSION for ROS $ROS_DISTRO (Ubuntu $UBUNTU_CODENAME)"
-echo "Using standard ROS bloom packaging workflow"
-
-# Warn about potentially unsupported combinations
-if [ "$ROS_DISTRO" = "humble" ] && [ "$UBUNTU_CODENAME" = "noble" ]; then
-    echo "⚠ Warning: ROS Humble with Ubuntu Noble may not be fully supported in rosdep"
-    echo "  Consider using: ./scripts/package.sh $VERSION humble jammy"
-elif [ "$ROS_DISTRO" = "jazzy" ] && [ "$UBUNTU_CODENAME" = "jammy" ]; then
-    echo "⚠ Warning: ROS Jazzy with Ubuntu Jammy may have limited support"
-    echo "  Consider using: ./scripts/package.sh $VERSION jazzy noble"
+# Create default params if they don't exist
+if [ ! -f "$ETC/params.yaml" ]; then
+  cat > "$ETC/params.yaml" << 'YAML'
+/**:
+  ros__parameters:
+    friendly_name: "mechanical-press"
+YAML
 fi
+
+# Update current symlink
+ln -sfn "$REL" "$CUR"
+
+# Set ownership
+chown -R emoco:emoco "$BASE"
+
+# Reload systemd
+command -v systemctl >/dev/null 2>&1 && systemctl daemon-reload || true
+exit 0
+EOF
+
+# Fix version in postinst script
+sed -i "s/\$VERSION/$VERSION/g" "$PKG_DIR/DEBIAN/postinst"
+sed -i "s/\$ROS_DISTRO/$ROS_DISTRO/g" "$PKG_DIR/DEBIAN/postinst"
+sed -i "s/\$LAUNCH_PKG/$LAUNCH_PKG/g" "$PKG_DIR/DEBIAN/postinst"
+sed -i "s/\$LAUNCH_FILE/$LAUNCH_FILE/g" "$PKG_DIR/DEBIAN/postinst"
+sed -i "s/\$APP/$APP_NAME/g" "$PKG_DIR/DEBIAN/postinst"
+chmod +x "$PKG_DIR/DEBIAN/postinst"
+
+# Build package
+echo "Building .deb package..."
+DEB_FILE="${APP_NAME}_${VERSION}_${ARCH}.deb"
+dpkg-deb --build "$PKG_DIR" "./$DEB_FILE"
+
+# Cleanup
+rm -rf "$PKG_DIR"
+rm -rf "$INSTALL_BASE"
+
 echo ""
-
-# Check dependencies
-MISSING_DEPS=""
-if ! command -v bloom-generate &> /dev/null; then
-    MISSING_DEPS="$MISSING_DEPS python3-bloom"
-fi
-
-if ! command -v fakeroot &> /dev/null; then
-    MISSING_DEPS="$MISSING_DEPS fakeroot"
-fi
-
-if ! command -v dh &> /dev/null; then
-    MISSING_DEPS="$MISSING_DEPS debhelper"
-fi
-
-if [ -n "$MISSING_DEPS" ]; then
-    echo "Error: Missing required dependencies:$MISSING_DEPS"
-    echo ""
-    echo "Install all prerequisites with:"
-    echo "  sudo apt install python3-bloom fakeroot debhelper"
-    echo ""
-    echo "Or install individually:"
-    if [[ $MISSING_DEPS == *"python3-bloom"* ]]; then
-        echo "  sudo apt install python3-bloom  # or: pip3 install bloom"
-    fi
-    if [[ $MISSING_DEPS == *"fakeroot"* ]]; then
-        echo "  sudo apt install fakeroot"
-    fi
-    if [[ $MISSING_DEPS == *"debhelper"* ]]; then
-        echo "  sudo apt install debhelper dh-python"
-    fi
-    exit 1
-fi
-
-# Clean previous packaging artifacts
-echo "Cleaning previous packaging artifacts..."
-rm -rf debian/
-rm -f ../*.deb ../*.tar.gz ../*.dsc ../*.changes
-
-# Update package.xml version if specified
-if [ "$VERSION" != "1.0.0" ]; then
-    echo "Updating package.xml version to $VERSION"
-    sed -i.bak "s|<version>.*</version>|<version>$VERSION</version>|" package.xml
-fi
-
-# Generate Debian packaging files using bloom
-echo "Generating Debian packaging files..."
-bloom-generate rosdebian \
-    --os-name ubuntu \
-    --os-version "$UBUNTU_CODENAME" \
-    --ros-distro "$ROS_DISTRO"
-
-# Update changelog with proper version
-echo "Updating changelog..."
-# bloom-generate creates a changelog, but we might want to customize it
-sed -i "s/^ros-$ROS_DISTRO-mechanical-press (.*)/ros-$ROS_DISTRO-mechanical-press ($VERSION-1$UBUNTU_CODENAME)/" debian/changelog
-
-# Build the Debian package
-echo "Building Debian package..."
-fakeroot debian/rules binary
-
-# Find and report the generated package
-DEB_FILE=$(find .. -name "ros-$ROS_DISTRO-mechanical-press_*.deb" -type f | head -n 1)
-
-if [ -n "$DEB_FILE" ]; then
-    # Move package to current directory for convenience
-    mv "$DEB_FILE" "./$(basename "$DEB_FILE")"
-    echo ""
-    echo "✓ Package created successfully!"
-    echo "Package: $(basename "$DEB_FILE")"
-    echo "Size: $(du -h "$(basename "$DEB_FILE")" | cut -f1)"
-    echo ""
-    echo "To install:"
-    echo "  sudo dpkg -i $(basename "$DEB_FILE")"
-    echo ""
-    echo "Package contents:"
-    dpkg-deb --contents "$(basename "$DEB_FILE")" | head -10
-    if [ $(dpkg-deb --contents "$(basename "$DEB_FILE")" | wc -l) -gt 10 ]; then
-        echo "  ... ($(dpkg-deb --contents "$(basename "$DEB_FILE")" | wc -l) total files)"
-    fi
-else
-    echo "Error: Package creation failed - no .deb file found"
-    exit 1
-fi
-
-# Clean up packaging artifacts
+echo "✓ Package created: $DEB_FILE"
 echo ""
-echo "Cleaning up packaging artifacts..."
-rm -rf debian/
-
-# Restore original package.xml if we modified it
-if [ -f package.xml.bak ]; then
-    mv package.xml.bak package.xml
-fi
-
+echo "To install:"
+echo "  sudo dpkg -i $DEB_FILE"
 echo ""
-echo "Packaging complete!"
+echo "To create instance:"
+echo "  ./scripts/create-instance.sh --name my-press --namespace /my_press --config config/examples/development.yaml"
