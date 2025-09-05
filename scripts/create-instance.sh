@@ -92,13 +92,14 @@ if [ -z "$SERVICE_NAME" ]; then
   SERVICE_NAME="mechanical-press-$INSTANCE_NAME"
 fi
 
-# Check if mechanical press package is installed
+# Check if mechanical press package is installed (standard ROS package naming)
 PACKAGE_INSTALLED=false
-if dpkg -l mechanical-press &>/dev/null; then
+ROS_PACKAGE_NAME="ros-$ROS_DISTRO-mechanical-press"
+if dpkg -l "$ROS_PACKAGE_NAME" &>/dev/null; then
   PACKAGE_INSTALLED=true
-  echo "✓ Found installed mechanical-press package"
+  echo "✓ Found installed ROS package: $ROS_PACKAGE_NAME"
 else
-  echo "⚠ mechanical-press package not installed - will build from source"
+  echo "⚠ ROS package $ROS_PACKAGE_NAME not installed - will build from source"
 fi
 
 # Auto-detect or prompt for workspace if not provided (only needed for source builds)
@@ -172,23 +173,39 @@ sudo cp "$CONFIG_FILE" "$CONFIG_DIR/params.yaml"
 echo "Installing mechanical_press..."
 
 if [ "$PACKAGE_INSTALLED" = true ]; then
-    # Use installed package
-    echo "Using installed mechanical-press package..."
+    # Use installed standard ROS package
+    echo "Using installed ROS package: $ROS_PACKAGE_NAME"
     
-    # Find the installed package location
-    PACKAGE_LOCATION="/opt/rosapps/mechanical-press/current"
-    if [ ! -d "$PACKAGE_LOCATION" ]; then
-        echo "Error: Package installed but not found at $PACKAGE_LOCATION"
-        echo "Try installing with: sudo dpkg -i mechanical-press_*.deb"
+    # Standard ROS installation paths
+    ROS_INSTALL_PATH="/opt/ros/$ROS_DISTRO"
+    PACKAGE_SHARE="$ROS_INSTALL_PATH/share/mechanical_press"
+    PACKAGE_LIB="$ROS_INSTALL_PATH/lib/mechanical_press"
+    
+    # Verify standard ROS package installation
+    if [ ! -d "$PACKAGE_SHARE" ]; then
+        echo "Error: ROS package installed but share directory not found at $PACKAGE_SHARE"
+        echo "Try installing with: sudo dpkg -i $ROS_PACKAGE_NAME_*.deb"
         exit 1
     fi
     
-    # Copy package installation to instance location
+    # Create instance-specific installation pointing to ROS package
     sudo mkdir -p "$INSTANCE_DIR/install"
-    sudo cp -r "$PACKAGE_LOCATION"/* "$INSTANCE_DIR/install/"
+    
+    # Create a setup script that sources ROS and sets up paths
+    sudo tee "$INSTANCE_DIR/install/setup.bash" > /dev/null << EOF
+#!/bin/bash
+# Instance-specific setup for mechanical_press
+source "$ROS_INSTALL_PATH/setup.bash"
+
+# Add instance-specific environment
+export MECHANICAL_PRESS_INSTALL_PATH="$ROS_INSTALL_PATH"
+export MECHANICAL_PRESS_SHARE_PATH="$PACKAGE_SHARE"
+export MECHANICAL_PRESS_LIB_PATH="$PACKAGE_LIB"
+EOF
+    
     sudo chown -R emoco:emoco "$INSTANCE_DIR/install"
     
-    echo "✓ Installed from package to service location"
+    echo "✓ Configured instance to use standard ROS package installation"
     
 else
     # Build from source (development mode)
