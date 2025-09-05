@@ -56,7 +56,7 @@ source install/setup.bash
 
 ### 2. Development Testing
 
-Test different configurations during development:
+Test with different configurations during development:
 
 ```bash
 # Development configuration (safe settings)
@@ -64,23 +64,11 @@ ros2 launch mechanical_press mechanical_press.launch.py \
   namespace:=/dev \
   param_file:=config/examples/development.yaml \
   instance_name:=dev_press
-
-# Production configuration testing
-ros2 launch mechanical_press mechanical_press.launch.py \
-  namespace:=/test \
-  param_file:=config/examples/factory_line1_press1.yaml \
-  instance_name:=test_production
-
-# Maintenance configuration testing  
-ros2 launch mechanical_press mechanical_press.launch.py \
-  namespace:=/test \
-  param_file:=config/examples/maintenance_press.yaml \
-  instance_name:=test_maintenance
 ```
 
-### 3. Run as Service ("Production" Deployment)
+### 3. Run as Service
 
-This section shows the simple "run as service" workflow - perfect for the UI button scenario:
+Deploy your mechanical press as a system service:
 
 ```bash
 # Create and run a service instance with smart defaults
@@ -104,141 +92,38 @@ sudo systemctl restart mechanical-press-my-press.service
 - Automatically starts on boot
 - Restarts on failure  
 - Has isolated logs and configuration
-- Uses your development build directly (no packaging complexity)
+- Uses your development build directly
 
-### Advanced: Package-Based Deployment
-
-For environments that need versioned packages:
+### Basic Service Management
 
 ```bash
-# 1. Create a deployment package (optional - for version control)
-./scripts/package.sh 1.2.0
+# Check service status
+sudo systemctl status mechanical-press-my-press.service
 
-# 2. Install the package
-sudo dpkg -i mechanical-press_1.2.0_amd64.deb
+# Start/stop the service
+sudo systemctl start mechanical-press-my-press.service
+sudo systemctl stop mechanical-press-my-press.service
 
-# 3. Create instances (will use the package instead of building from source)
-./scripts/create-instance.sh \
-  --name production-press \
-  --namespace /production/press1 \
-  --config config/examples/factory_line1_press1.yaml
+# View logs in real-time
+journalctl -u mechanical-press-my-press -f
+
+# Update after code changes
+./scripts/dev-snapshot.sh my-press
+sudo systemctl restart mechanical-press-my-press.service
 ```
 
 ---
 
 ## What Instance Creation Does
 
-The `create-instance.sh` script creates **isolated systemd services** for each press instance:
+The `create-instance.sh` script creates **isolated system services** for each mechanical press:
 
-### What Gets Created
-1. **systemd Service File**: Created at `/etc/systemd/system/{SERVICE_NAME}.service` - defines how Linux starts/stops/monitors the instance
-2. **Instance Configuration**: Your YAML config copied to `/etc/rosapps/mechanical-press-instances/{NAME}/params.yaml`
-3. **Isolated Directories**: Separate logs (`/var/log/rosapps-mechanical-press-{NAME}/`) and state directories
-4. **Application Copy**: Clean build of mechanical_press (isolated from your workspace)
+- **Service File**: Creates a Linux service that starts/stops your press automatically
+- **Configuration**: Your YAML settings are copied to a dedicated location  
+- **Isolated Logs**: Each press instance has its own log files
+- **Clean Installation**: Uses a clean build isolated from your development workspace
 
-### Why This Approach
-- **"Run as Service" Button Ready**: Simple command perfect for UI integration
-- **Reliable**: Services auto-restart on failure, survive system reboots
-- **Transparent**: You see exactly what gets deployed and where
-- **No Complex Dependencies**: Just needs `colcon build` (already have for development)
-
----
-
-## Service Management
-
-### Instance Lifecycle Operations
-
-```bash
-# Start a specific instance
-sudo systemctl start line1-press.service
-
-# Stop a specific instance
-sudo systemctl stop line1-press.service
-
-# Enable instance to start automatically on boot
-sudo systemctl enable line1-press.service
-
-# Disable instance from starting automatically on boot
-sudo systemctl disable line1-press.service
-
-# Restart instance (stop then start)
-sudo systemctl restart line1-press.service
-
-# Reload configuration without full restart
-sudo systemctl reload-or-restart line1-press.service
-
-# Check instance status
-sudo systemctl status line1-press.service
-
-# View instance logs
-journalctl -u line1-press.service -f
-
-# View recent logs
-journalctl -u line1-press.service --since "1 hour ago"
-```
-
-### Managing Multiple Instances
-
-```bash
-# Start all mechanical-press instances
-sudo systemctl start mechanical-press-*
-
-# Stop all mechanical-press instances  
-sudo systemctl stop mechanical-press-*
-
-# Check status of all instances
-sudo systemctl status mechanical-press-*
-
-# Enable all instances for auto-start
-sudo systemctl enable mechanical-press-*
-
-# Disable all instances from auto-start
-sudo systemctl disable mechanical-press-*
-```
-
-### Removing Instances
-
-```bash
-# Stop and disable a specific instance
-sudo systemctl stop line1-press.service
-sudo systemctl disable line1-press.service
-
-# Remove the service definition
-sudo rm /etc/systemd/system/line1-press.service
-sudo systemctl daemon-reload
-
-# Clean up instance files (optional - keeps configuration)
-sudo rm -rf /var/lib/rosapps-mechanical-press-line1-press
-sudo rm -rf /var/log/rosapps-mechanical-press-line1-press
-
-# Remove instance configuration (if no longer needed)
-sudo rm -rf /etc/rosapps/mechanical-press-instances/line1-press
-```
-
-### Troubleshooting
-
-```bash
-# Check if service is running
-sudo systemctl is-active line1-press.service
-
-# Check if service is enabled for auto-start
-sudo systemctl is-enabled line1-press.service
-
-# View detailed service information
-sudo systemctl show line1-press.service
-
-# Check for service failures
-sudo systemctl --failed
-
-# Reset failed state
-sudo systemctl reset-failed line1-press.service
-
-# View logs with more detail
-journalctl -u line1-press.service --no-pager -l
-
-# Follow logs in real-time with timestamps
-journalctl -u line1-press.service -f --output=short-iso
-```
+**Benefits**: Services auto-restart on failure, survive system reboots, and can be managed with standard Linux tools.
 
 ---
 
@@ -283,6 +168,22 @@ journalctl -u line1-press.service -f --output=short-iso
       force: 2.0      # Ultra-safe
       velocity: 100.0 # Very slow
     log_level: "DEBUG" # Full diagnostics
+```
+
+### Testing Different Configurations
+
+```bash
+# Test production configuration
+ros2 launch mechanical_press mechanical_press.launch.py \
+  namespace:=/test \
+  param_file:=config/examples/factory_line1_press1.yaml \
+  instance_name:=test_production
+
+# Test maintenance configuration  
+ros2 launch mechanical_press mechanical_press.launch.py \
+  namespace:=/test \
+  param_file:=config/examples/maintenance_press.yaml \
+  instance_name:=test_maintenance
 ```
 
 ---
@@ -429,6 +330,32 @@ sudo systemctl restart mechanical-press-my-press.service
   --namespace /robot2 \
   --config config/examples/maintenance_press.yaml
 ```
+
+---
+
+## Advanced: Package-Based Deployment
+
+For environments that need versioned packages or multi-server deployment:
+
+```bash
+# 1. Create a deployment package (for version control)
+./scripts/package.sh 1.2.0
+
+# 2. Install the package
+sudo dpkg -i mechanical-press_1.2.0_amd64.deb
+
+# 3. Create instances (will use the package instead of building from source)
+./scripts/create-instance.sh \
+  --name production-press \
+  --namespace /production/press1 \
+  --config config/examples/factory_line1_press1.yaml
+
+# 4. For multi-server deployment, transfer packages
+scp mechanical-press_1.2.0_amd64.deb production-server:
+ssh production-server "sudo dpkg -i mechanical-press_1.2.0_amd64.deb"
+```
+
+**When to use:** Multi-server environments, version control requirements, or when you need standard ROS bloom packaging (see `BLOOM_PACKAGING.md`).
 
 ---
 
