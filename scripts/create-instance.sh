@@ -12,7 +12,7 @@ INSTANCE_NAME=""
 NAMESPACE=""
 CONFIG_FILE=""
 SERVICE_NAME=""
-ROS_DISTRO="jazzy"  # Default to current LTS
+ROS_DISTRO="${ROS_DISTRO:-jazzy}"  # Use environment variable or default to current LTS
 WORKSPACE_PATH=""  # Will be detected or prompted for
 
 # Parse arguments
@@ -47,14 +47,18 @@ while [[ $# -gt 0 ]]; do
       echo ""
       echo "Options:"
       echo "  --service-name SERVICE_NAME    Custom service name (default: mechanical-press-INSTANCE_NAME)"
-      echo "  --ros-distro ROS_DISTRO        ROS distribution (default: jazzy)"
+      echo "  --ros-distro ROS_DISTRO        ROS distribution (default: jazzy, or \$ROS_DISTRO env var)"
       echo "  --workspace WORKSPACE_PATH     ROS workspace path (auto-detected or prompted if not provided)"
       echo ""
       echo "Examples:"
-      echo "  # Development instance (auto-detect workspace)"
+      echo "  # Development instance with default ROS distro"
       echo "  $0 --name dev-press --namespace /dev --config config/examples/development.yaml"
       echo ""
-      echo "  # Production instance with specific settings"
+      echo "  # Using environment variable for ROS distro"
+      echo "  export ROS_DISTRO=humble"
+      echo "  $0 --name dev-press --namespace /dev --config config/examples/development.yaml"
+      echo ""
+      echo "  # Production instance with specific ROS distro"
       echo "  $0 --name factory-line1-press1 --namespace /factory/line1/press1 --config config/examples/factory_line1_press1.yaml --ros-distro humble"
       echo ""
       echo "  # Specify custom workspace location"
