@@ -1,0 +1,36 @@
+# Development configuration  
+# Settings for development, testing, and learning
+# Default ROS distro: jazzy (adjust as needed)
+
+/dev/mechanical_press:
+  ros__parameters:
+    # Instance identity
+    instance_name: "development"
+    friendly_name: "Development Press"
+    
+    # Development-friendly settings
+    manual:
+      force: 3.0      # Moderate force for testing
+      velocity: 200.0 # Reasonable speed
+    approach:
+      force: 2.0
+      velocity: 150.0 # Moderate approach
+    press:
+      force: 8.0      # Medium press force
+      velocity: 75.0  # Controlled speed
+    return:
+      force: 3.0
+      velocity: 250.0 # Quick return
+    
+    # Development positions
+    home:
+      position: 0.0
+    start:
+      position: 30.0   # Medium stroke
+    end:
+      position: 120.0  # Medium depth
+    
+    # Development system settings
+    control_loop_rate: 20.0  # Standard rate
+    safety_timeout: 5.0      # Standard timeout
+    log_level: "INFO"        # Informative logging

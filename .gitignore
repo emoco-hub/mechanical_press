@@ -52,3 +52,21 @@ qtcreator-*
 
 # Catkin custom files
 CATKIN_IGNORE
+
+# Bloom packaging artifacts
+debian/
+obj-*/
+*.deb
+*.ddeb
+*.build
+*.buildinfo
+*.changes
+*.dsc
+*.tar.gz
+*.tar.xz
+
+# Python packaging artifacts
+.pybuild/
+*.egg-info/
+__pycache__/
+*.pyc

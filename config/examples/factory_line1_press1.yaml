@@ -1,0 +1,35 @@
+# Production configuration for Factory Line 1, Press 1
+# High-volume stamping operations
+
+/factory/line1/press1/mechanical_press:
+  ros__parameters:
+    # Instance identity
+    instance_name: "factory_line1_press1"
+    friendly_name: "Factory Line 1 - Press 1"
+    
+    # High-volume production settings
+    manual:
+      force: 8.0      # Higher force for production
+      velocity: 400.0 # Faster manual operations
+    approach:
+      force: 5.0
+      velocity: 350.0 # Fast approach for cycle time
+    press:
+      force: 25.0     # Heavy-duty pressing force
+      velocity: 80.0  # Controlled press speed
+    return:
+      force: 6.0
+      velocity: 500.0 # Fast return for cycle time
+    
+    # Production positions (configured by setup team)
+    home:
+      position: 0.0
+    start:
+      position: 50.0   # Start position for stamping
+    end:
+      position: 200.0  # Full press depth
+    
+    # Production system settings
+    control_loop_rate: 50.0  # Higher rate for production
+    safety_timeout: 2.0      # Stricter timeout
+    log_level: "WARN"        # Reduce log noise in production

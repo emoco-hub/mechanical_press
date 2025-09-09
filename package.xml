@@ -1,15 +1,29 @@
 <package format="3">
   <name>mechanical_press</name>
-  <version>0.1.0</version>
-  <description>Mechanical press application node for ROS 2</description>
-  <maintainer email="your_email@example.com">Your Name</maintainer>
+  <version>1.0.0</version>
+  <description>Industrial mechanical press control system for ROS 2. Demonstrates production deployment patterns with multi-instance support.</description>
+  
+  <maintainer email="ops@example.com">Emoco Labs</maintainer>
   <license>Apache-2.0</license>
+  
+  <url type="website">https://github.com/example/mechanical_press</url>
+  <url type="bugtracker">https://github.com/example/mechanical_press/issues</url>
+  <url type="repository">https://github.com/example/mechanical_press</url>
+  
+  <author email="ops@example.com">Emoco Labs</author>
 
-  <buildtool_depend>ament_python</buildtool_depend>
-
+  <!-- Runtime dependencies -->
   <depend>rclpy</depend>
   <depend>std_msgs</depend>
-  <exec_depend>std_srvs</exec_depend>
+  <depend>std_srvs</depend>
+  
+  <!-- Python dependencies -->
+  <exec_depend>python3-yaml</exec_depend>
+  
+  <!-- Test dependencies -->
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
 
   <export>
     <build_type>ament_python</build_type>
