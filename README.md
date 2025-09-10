@@ -55,6 +55,16 @@ source install/setup.bash
 
 **Note**: The `--symlink-install` flag creates symbolic links to source files. During development, edit Python files and restart the node to see changes - no rebuild required.
 
+### 2. Quick Dev Mode Test
+
+```bash
+# Run directly in development with example configuration
+ros2 launch mechanical_press mechanical_press.launch.py \
+  namespace:=/dev \
+  param_file:=config/examples/development.yaml \
+  instance_name:=my-press
+```
+
 ---
 
 ## Service Deployment

@@ -13,8 +13,6 @@ class MechanicalPressNode(Node):
     def __init__(self):
         super().__init__('mechanical_press')
 
-        self.get_logger().info("Hello 1")
-
         self.declare_parameter('param_file_path', '')
         self.param_file_path = self.get_parameter('param_file_path').get_parameter_value().string_value
         if not self.param_file_path:
